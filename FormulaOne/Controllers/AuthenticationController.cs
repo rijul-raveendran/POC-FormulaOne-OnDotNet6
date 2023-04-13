@@ -39,8 +39,8 @@ namespace FormulaOne.Controllers
                 });
             }
 
-            var userExist = await _userManager.FindByEmailAsync(registrationRequestDto.Email);
-            if (userExist != null)
+            var existing_user = await _userManager.FindByEmailAsync(registrationRequestDto.Email);
+            if (existing_user != null)
             {
                 return BadRequest(new AuthResult
                 {
@@ -71,6 +71,54 @@ namespace FormulaOne.Controllers
 
             // Generate JWT token when user added to table
             var jwtToken = GenerateJwtToken(newUser);
+
+            return Ok(new AuthResult()
+            {
+                IsSuccess = true,
+                Token = jwtToken
+            });
+        }
+
+        [HttpPost]
+        [Route(nameof(Login))]
+        public async Task<IActionResult> Login([FromBody] UserLoginRequestDto loginRequestDto)
+        {
+            //Validate incoming request
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new AuthResult
+                {
+                    IsSuccess = false,
+
+                    Errors = new List<string>() { "Invalid Request" }
+                });
+            }
+
+            var existing_user = await _userManager.FindByEmailAsync(loginRequestDto.Email);
+            if (existing_user == null)
+            {
+                return BadRequest(new AuthResult
+                {
+                    IsSuccess = false,
+
+                    Errors = new List<string>() { "Invalid Credentials" }
+                });
+            }
+
+            var isPasswordCorrect = await _userManager.CheckPasswordAsync(existing_user, loginRequestDto.Password);
+
+            if(!isPasswordCorrect)
+            {
+                return BadRequest(new AuthResult
+                {
+                    IsSuccess = false,
+
+                    Errors = new List<string>() { "Invalid Credentials" }
+                });
+            }
+
+            // Generate JWT token 
+            var jwtToken = GenerateJwtToken(existing_user);
 
             return Ok(new AuthResult()
             {
