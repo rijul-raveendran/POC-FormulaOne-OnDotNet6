@@ -18,7 +18,7 @@ namespace FormulaOne.Controllers
         //    new Team { Id = 2, Country="Italy", Name="Ferrari", TeamPrincipal="Frédéric Vasseur"}
         //};
 
-        private static AppDbContext _dbcontext;
+        private static AppDbContext? _dbcontext;
         public TeamsController(AppDbContext dbContext)
         {
             _dbcontext = dbContext;
