@@ -77,37 +77,37 @@ namespace FormulaOne.Controllers
 ,               });
             }
 
-            //var code = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
-            //var emailBody = "Please confirm your email by clicking on the link below: " +
-            //    $"<a href=\"#URL#\">Confirm Email</a>";
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
+            var emailBody = "Please confirm your email by clicking on the link below: " +
+                $"<a href=\"#URL#\">Confirm Email</a>";
 
-            ////sample format https://localhost:44300/api/authentication/confirmemail?userid={newUser.Id}&code={code}
-            //var callBack_url = Request.Scheme + "://" + Request.Host + Url.Action(nameof(ConfirmEmail), "Authentication", new {userId = newUser.Id, code = code});
 
-            ////var body = emailBody.Replace("#URL#",HtmlEncoder.Default.Encode(callBack_url));
-            //var body = emailBody.Replace("#URL#",callBack_url);
+            //sample format https://localhost:44300/api/authentication/confirmemail?userid={newUser.Id}&code={code}
+            var callBack_url = Request.Scheme + "://" + Request.Host + Url.Action(nameof(ConfirmEmail), "Authentication", new { userId = newUser.Id, code = code });
 
-            //// Send email
-            //var result = SendEmail(body, newUser.Email);
+            var body = emailBody.Replace("#URL#", callBack_url);
 
-            //if (result)
-            //{
-            //    return Ok("Please confirm the email");
-            //}
+            // Send email
+            var result = SendEmail(body, newUser.Email);
 
-            //return Ok("Please request an email verification link");
+            if (result)
+            {
+                return Ok("Please confirm the email");
+            }
+
+            return Ok("Please request an email verification link");
 
 
             // Generate JWT token when user added to table
-            var jwtToken = GenerateJwtToken(newUser);
+            //var jwtToken = GenerateJwtToken(newUser);
 
-       
 
-            return Ok(new AuthResult()
-            {
-                IsSuccess = true,
-                Token = jwtToken
-            });
+
+            //return Ok(new AuthResult()
+            //{
+            //    IsSuccess = true,
+            //    Token = jwtToken
+            //});
         }
 
         [Route(nameof(ConfirmEmail))]
@@ -169,15 +169,15 @@ namespace FormulaOne.Controllers
                 });
             }
 
-            //if(!existing_user.EmailConfirmed)
-            //{
-            //    return BadRequest(new AuthResult
-            //    {
-            //        IsSuccess = false,
+            if (!existing_user.EmailConfirmed)
+            {
+                return BadRequest(new AuthResult
+                {
+                    IsSuccess = false,
 
-            //        Errors = new List<string>() { "Please confirm your email" }
-            //    });
-            //}
+                    Errors = new List<string>() { "Please confirm your email" }
+                });
+            }
 
             var isPasswordCorrect = await _userManager.CheckPasswordAsync(existing_user, loginRequestDto.Password);
 
@@ -235,20 +235,23 @@ namespace FormulaOne.Controllers
 
         private bool SendEmail(string emailBody ,string email)
         {
+            var emailAddress = _configuration["MailGun:EmailAddress"];
+            var restClientOptions = new RestClientOptions("https://api.mailgun.net/v3")
+            {
+                // Replace appsettings.json with original api key
+                Authenticator = new HttpBasicAuthenticator("api", _configuration["MailGun:ApiKey"])
+            };
+
             // create client
-            var client = new RestClient("https://api.mailgun.net/v3");
+            var client = new RestClient(restClientOptions);
             // create request
             var request = new RestRequest("", Method.Post);
 
-            // Replace appsettings.json with original api key
-            client.AddDefaultHeader("api", _configuration["MailGun:ApiKey"]);
-            //client.Authenticator = new HttpBasicAuthenticator("api", _configuration["MailGun:ApiKey"]);
             request.AddParameter("domain", "sandboxddca8e8c38db41ad93a9204b24827ca0.mailgun.org", ParameterType.UrlSegment);
             request.Resource = "{domain}/messages";
-            request.AddParameter ("from", "Excited User <mailgun@sandboxddca8e8c38db41ad93a9204b24827ca0.mailgun.org>");
-            //request.AddParameter ("to", email);
-            request.AddParameter("to", "temporaryEmailAddress"); //Mailgain supports only Authorized recepients
-            request.AddParameter ("subject", "Hello");
+            request.AddParameter ("from", "Formula One Admin <mailgun@sandboxddca8e8c38db41ad93a9204b24827ca0.mailgun.org>");
+            request.AddParameter("to", emailAddress); //Mailgain supports only Authorized recepients
+            request.AddParameter ("subject", $"Email Confirmation" + email);
             request.AddParameter ("text", emailBody);
             request.Method = Method.Post;
             var response = client.Execute(request);
